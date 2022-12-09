@@ -1,21 +1,5 @@
 import numpy as np
 import random
-global echeancier
-global HS
-global HF
-global nbBus
-global nbBusRep
-global ReparationDispo
-
-global aireQr
-global aireBr
-global aireQc
-
-global fileQc
-global fileQr
-global ControleDispo
-
-global duree
 
 # Heure simulateur
 HS = 0
@@ -54,7 +38,7 @@ def ArriveeBus():
     global nbBus
 
     nbBus +=  1
-    lam = 80 # lambda = 3/4 | 1/lambda -> 4/3h donc 80 min
+    lam = 45
     res = np.random.exponential(lam, 1)
 
 
@@ -62,19 +46,6 @@ def ArriveeBus():
     InsertionEvenement((HS + res[0] , ArriveeBus))
     #Ajout de l'evenement ArriveeFileFC dans l'echeancier
     InsertionEvenement((HS,ArriveeFileC))
-
-def AccesReparation(echeancier):
-    global fileQr
-    global ReparationDispo
-
-    fileQr -= 1
-    ReparationDispo += 1
-
-    low = 168 # 2.8h = 168min
-    high = 330 # 5.5h = 330min
-    res = np.random.uniform(low,high,1)
-
-    InsertionEvenement((HS + res[0], DepartReparation))
 
 def ArriveeFileC():
     global fileQc
@@ -84,27 +55,28 @@ def ArriveeFileC():
     if ControleDispo == 0:
         InsertionEvenement((HS,AccesControle))
 
-
 def AccesControle():
     global fileQc
-    global ReparationDispo
+    global ControleDispo
 
     fileQc -= 1
-    ReparationDispo += 1
+    ControleDispo += 1
 
-    low = 168  # 2.8h = 168min
-    high = 330  # 5.5h = 330min
+    low = 15  # 00h15 = 15min
+    high = 65  # 01h05 = 65min
     res = np.random.uniform(low, high, 1)
     InsertionEvenement((HS + res[0],DepartControle))
 
 def DepartControle():
-    ControleDispo = 0
+    global ControleDispo
+
+    ControleDispo -= 1
     if fileQc > 0 :
         InsertionEvenement((HS, AccesControle))
 
     rand = random.random()
     if rand < 0.30 :
-        InsertionEvenement((HS,ArriveeFileR))
+        InsertionEvenement((HS, ArriveeFileR))
 
 def ArriveeFileR():
     global nbBusRep
@@ -121,37 +93,26 @@ def AccesReparation():
 
     fileQr -= 1
     ReparationDispo += 1
-    low = 126  # 2.1h = 126min
-    high = 270  # 4.5h = 270min
-    res = np.random.uniform(low, high, 1)
+
+    low = 168 # 02h48 = 168min
+    high = 330 # 05h30 = 330min
+    res = np.random.uniform(low,high,1)
 
     InsertionEvenement((HS + res[0], DepartReparation))
-
 
 def DepartReparation():
     global ReparationDispo
 
     ReparationDispo -= 1
+
     if fileQr > 0:
         InsertionEvenement((HS,AccesReparation))
 
 def DebutSimulation():
-    nbBus = 0
-    nbBusRep=0
-    aireQc = 0
-    aireQr = 0
-    aireBr = 0
-    fileQc = 0
-    fileQr = 0
-    ReparationDispo = 0
-    ControleDispo = 0
-
     InsertionEvenement((HF, FinSimulation))
     InsertionEvenement((HS + np.random.exponential(80, 1)[0],ArriveeBus))
 
     print("insertion de fin ok")
-
-
 
 def MajAires(D1, D2):
     global aireQc
@@ -164,11 +125,19 @@ def MajAires(D1, D2):
 
 def getKey(element):
     return element[0]
+
 def InsertionEvenement(evenement : tuple):
     global echeancier
+
     echeancier.insert(0, evenement)
     echeancier.sort(key=getKey)
+
 def FinSimulation():
+    global echeancier
+    global tempsAttMoyRep
+    global tempsAttMoyCon
+    global tauxUtilRep
+
     echeancier.clear()
     tempsAttMoyCon = aireQc / nbBus
     tempsAttMoyRep = aireQr / nbBusRep
@@ -181,6 +150,7 @@ def FinSimulation():
 
 if __name__ == "__main__":
     HS = 0
+
     InsertionEvenement((HS,DebutSimulation))
     while len(echeancier) > 0 :
         (date, evenement) = echeancier.pop(0)
