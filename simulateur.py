@@ -34,6 +34,15 @@ tempsAttMoyCon =0
 tempsAttMoyRep = 0
 tauxUtilRep = 0
 
+tailleMoyenneFileC = 0
+tailleMoyenneFileR = 0
+
+# Variable quesition 3
+blocageReparation = 0
+aireQrBlocage = 0
+blocageControle = 0
+aireQcBlocage = 0
+
 def ArriveeBus():
     global nbBus
 
@@ -58,6 +67,7 @@ def ArriveeFileC():
 def AccesControle():
     global fileQc
     global ControleDispo
+    global blocageControle
 
     fileQc -= 1
     ControleDispo += 1
@@ -66,6 +76,9 @@ def AccesControle():
     high = 65  # 01h05 = 65min
     res = np.random.uniform(low, high, 1)
     InsertionEvenement((HS + res[0],DepartControle))
+
+    if (HS+res[0])>=HF:
+        blocageControle+=1
 
 def DepartControle():
     global ControleDispo
@@ -90,6 +103,7 @@ def ArriveeFileR():
 def AccesReparation():
     global fileQr
     global ReparationDispo
+    global blocageReparation
 
     fileQr -= 1
     ReparationDispo += 1
@@ -99,6 +113,10 @@ def AccesReparation():
     res = np.random.uniform(low,high,1)
 
     InsertionEvenement((HS + res[0], DepartReparation))
+
+    # Modification Question 3
+    if HS + res[0] > HF:
+        blocageReparation+=1
 
 def DepartReparation():
     global ReparationDispo
@@ -118,9 +136,15 @@ def MajAires(D1, D2):
     global aireQc
     global aireQr
     global aireBr
+    global aireQrBlocage
+    global aireQcBlocage
 
-    aireQc += (D2 - D1)* fileQc
-    aireQr += (D2 - D1)* fileQr
+    if blocageReparation == 2 and aireQrBlocage == 0:
+        aireQrBlocage = aireQr
+    if blocageControle == 1 and aireQcBlocage == 0:
+        aireQcBlocage = aireQc
+    aireQr += (D2 - D1) * fileQr
+    aireQc += (D2 - D1) * fileQc
     aireBr += (D2 - D1)* ReparationDispo
 
 def getKey(element):
@@ -137,15 +161,39 @@ def FinSimulation():
     global tempsAttMoyRep
     global tempsAttMoyCon
     global tauxUtilRep
+    global tailleMoyenneFileR
+    global tailleMoyenneFileC
+    global aireQrBlocage
+    global aireQcBlocage
 
     echeancier.clear()
     tempsAttMoyCon = aireQc / nbBus
     tempsAttMoyRep = aireQr / nbBusRep
+    tailleMoyenneFileR = aireQr / HF
+    tailleMoyenneFileC = aireQc / HF
     tauxUtilRep = aireBr / (2*HF)
     print("temps_attente_moyen_avant_controle : ", tempsAttMoyCon,
             "temps_attente_moyen_avant_reparation : ", tempsAttMoyRep,
-            "taux_utilisation_centre_reparation : ", tauxUtilRep
+            "taux_utilisation_centre_reparation : ", tauxUtilRep,
+            "taille_moyenne_file_reparation : ", tailleMoyenneFileR,
+            "taille_moyenne_file_controle : ", tailleMoyenneFileC
     )
+
+    if aireQrBlocage == 0:
+        aireQrBlocage = aireQr
+    if aireQcBlocage == 0:
+        aireQcBlocage = aireQc
+    tempsAttMoyCon = aireQcBlocage / nbBus
+    tempsAttMoyRep = aireQrBlocage / nbBusRep
+    tailleMoyenneFileR = aireQrBlocage / HF
+    tailleMoyenneFileC = aireQcBlocage / HF
+    tauxUtilRep = aireBr / (2 * HF)
+    print("temps_attente_moyen_avant_controle : ", tempsAttMoyCon,
+          "temps_attente_moyen_avant_reparation : ", tempsAttMoyRep,
+          "taux_utilisation_centre_reparation : ", tauxUtilRep,
+          "taille_moyenne_file_reparation : ", tailleMoyenneFileR,
+          "taille_moyenne_file_controle : ", tailleMoyenneFileC
+          )
 
 
 if __name__ == "__main__":
@@ -154,13 +202,27 @@ if __name__ == "__main__":
     InsertionEvenement((HS,DebutSimulation))
     while len(echeancier) > 0 :
         (date, evenement) = echeancier.pop(0)
-        print((date,evenement))
         MajAires(HS,date)
         HS = date
         evenement()
 
-
-
+"""
+echeancierFile qui contient les tuples (HS, fileQr)
+lastKey = 0 Variable qui indique l'indice dans dicBus du prochain bus à sortir
+dicBus = {} Dictionnaire qui contient BUSi = (Hdébut, Hfin)
+étatFile = 0
+nbBus = 0
+        #   Pour tous les éléments dans échancierFile:
+        #   Si elem[1] > étatFile:
+        #       Alors étatFile = elem[1]
+        #       nbBus++
+        #       dicBus[nbBus] = (elem[0],0)
+        #       lastKey=nbBus
+        #   Si elem[1] < etatFile:
+        #       Alors étatFile = elem[1]
+        #       dicBus[nbBus] = (dicBus[nbBus][0],elem[0])
+        #       lastKey++
+"""
 
 
 
