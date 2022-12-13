@@ -26,6 +26,11 @@ aireBr = 0
 fileQc = 0
 fileQr = 0
 
+echeancierDepartFileR = []
+echeancierArriveeFileR = []
+
+echeancierDepartFileC = []
+echeancierArriveeFileC = []
 #représente l'état de disponibilité de la file de controle peut prendre les valeurs
 ControleDispo = 0
 ReparationDispo = 0
@@ -43,6 +48,38 @@ aireQrBlocage = 0
 blocageControle = 0
 aireQcBlocage = 0
 
+def Get_Max_Time():
+    global echeancierDepartFileC
+    global echeancierArriveeFileC
+    delais_attente_frep =  []
+    delais_attente_fcont = []
+    max_attente_c = 0
+    max_attente_r = 0
+    indice_max_r = 0
+    indice_max_c = 0
+    global  echeancierDepartFileR
+    global echeancierArriveeFileR
+
+    for index_arrivee_c, arrivee_file_c in enumerate(echeancierArriveeFileC):
+        nb_depart = arrivee_file_c[1]
+        for depart_file_c in echeancierDepartFileC:
+            if depart_file_c[0] >= arrivee_file_c[0]:
+                nb_depart -= 1
+            if nb_depart == 0 and depart_file_c[0] >= arrivee_file_c[0]:
+                indice_max_c = index_arrivee_c if depart_file_c[0] - arrivee_file_c[0] > max_attente_c else indice_max_c
+                max_attente_c = depart_file_c[0] - arrivee_file_c[0] if depart_file_c[0] - arrivee_file_c[0] > max_attente_c else max_attente_c
+                break
+    for index_arrivee_r, arrive_file_r in enumerate(echeancierArriveeFileR):
+        nb_depart = arrive_file_r[1]
+        for dep_r in echeancierDepartFileR:
+            if dep_r[0] >= arrive_file_r[0]:
+                nb_depart -= 1
+            if nb_depart == 0 and dep_r[0] >= arrive_file_r[0]:
+                indice_max_r = index_arrivee_r if dep_r[0] - arrive_file_r[0] > max_attente_r else indice_max_r
+                max_attente_r = dep_r[0] - arrive_file_r[0] if dep_r[0] - arrive_file_r[0] > max_attente_r else max_attente_r
+                break
+    return {indice_max_c: max_attente_c, indice_max_r: max_attente_r}
+
 def ArriveeBus():
     global nbBus
 
@@ -58,8 +95,9 @@ def ArriveeBus():
 
 def ArriveeFileC():
     global fileQc
-
+    global echeancierArriveeFileC
     fileQc +=1
+    echeancierArriveeFileC.append((HS, fileQc))
     # si la file est dispo
     if ControleDispo == 0:
         InsertionEvenement((HS,AccesControle))
@@ -68,8 +106,10 @@ def AccesControle():
     global fileQc
     global ControleDispo
     global blocageControle
+    global echeancierDepartFileC
 
     fileQc -= 1
+    echeancierDepartFileC.append((HS, fileQc))
     ControleDispo += 1
 
     low = 15  # 00h15 = 15min
@@ -94,9 +134,10 @@ def DepartControle():
 def ArriveeFileR():
     global nbBusRep
     global fileQr
-
+    global echeancierArriveeFileR
     fileQr += 1
     nbBusRep += 1
+    echeancierArriveeFileR.append((HS, fileQr))
     if ReparationDispo < 2 :
         InsertionEvenement((HS,AccesReparation))
 
@@ -104,8 +145,9 @@ def AccesReparation():
     global fileQr
     global ReparationDispo
     global blocageReparation
-
+    global  echeancierDepartFileR
     fileQr -= 1
+    echeancierDepartFileR.append((HS, fileQr))
     ReparationDispo += 1
 
     low = 168 # 02h48 = 168min
@@ -166,11 +208,13 @@ def FinSimulation():
     global aireQrBlocage
     global aireQcBlocage
 
+
     echeancier.clear()
     tempsAttMoyCon = aireQc / nbBus
     tempsAttMoyRep = aireQr / nbBusRep
     tailleMoyenneFileR = aireQr / HF
     tailleMoyenneFileC = aireQc / HF
+
     tauxUtilRep = aireBr / (2*HF)
     print("temps_attente_moyen_avant_controle : ", tempsAttMoyCon,
             "temps_attente_moyen_avant_reparation : ", tempsAttMoyRep,
@@ -205,25 +249,5 @@ if __name__ == "__main__":
         MajAires(HS,date)
         HS = date
         evenement()
-
-"""
-echeancierFile qui contient les tuples (HS, fileQr)
-lastKey = 0 Variable qui indique l'indice dans dicBus du prochain bus à sortir
-dicBus = {} Dictionnaire qui contient BUSi = (Hdébut, Hfin)
-étatFile = 0
-nbBus = 0
-        #   Pour tous les éléments dans échancierFile:
-        #   Si elem[1] > étatFile:
-        #       Alors étatFile = elem[1]
-        #       nbBus++
-        #       dicBus[nbBus] = (elem[0],0)
-        #       lastKey=nbBus
-        #   Si elem[1] < etatFile:
-        #       Alors étatFile = elem[1]
-        #       dicBus[nbBus] = (dicBus[nbBus][0],elem[0])
-        #       lastKey++
-"""
-
-
-
-
+    tmax = Get_Max_Time()
+    print(f"les temps d'attentes maximums sont respectivement pour les files de contrôle et de réparation : {tmax.values()}")
