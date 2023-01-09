@@ -1,5 +1,6 @@
 import numpy as np
 import random
+import csv
 
 # Heure simulateur
 HS = 0
@@ -42,11 +43,18 @@ tauxUtilRep = 0
 tailleMoyenneFileC = 0
 tailleMoyenneFileR = 0
 
-# Variable quesition 3
+# Variable question 3
 blocageReparation = 0
 aireQrBlocage = 0
 blocageControle = 0
 aireQcBlocage = 0
+
+# Variable question 5
+nbBusControle = 0
+nbStop = 200
+tempsAttenteControle = []
+tempsAttenteControleGlobal = []
+
 
 def Get_Max_Time():
     global echeancierDepartFileC
@@ -96,6 +104,9 @@ def ArriveeBus():
 def ArriveeFileC():
     global fileQc
     global echeancierArriveeFileC
+    global tempsAttenteControle
+
+    tempsAttenteControle.append(HS)
     fileQc +=1
     echeancierArriveeFileC.append((HS, fileQc))
     # si la file est dispo
@@ -107,6 +118,14 @@ def AccesControle():
     global ControleDispo
     global blocageControle
     global echeancierDepartFileC
+    global nbBusControle
+    global tempsAttenteControle
+
+    tempsAttenteControle[nbBusControle] = HS - tempsAttenteControle[nbBusControle]
+    nbBusControle += 1
+
+    if (nbBusControle == nbStop):
+        InsertionEvenement((HS, FinSimulation))
 
     fileQc -= 1
     echeancierDepartFileC.append((HS, fileQc))
@@ -170,7 +189,7 @@ def DepartReparation():
 
 def DebutSimulation():
     InsertionEvenement((HF, FinSimulation))
-    InsertionEvenement((HS + np.random.exponential(80, 1)[0],ArriveeBus))
+    InsertionEvenement((HS, ArriveeBus))
 
     print("insertion de fin ok")
 
@@ -239,15 +258,53 @@ def FinSimulation():
           "taille_moyenne_file_controle : ", tailleMoyenneFileC
           )
 
+    tempsAttenteControleGlobal.append(tempsAttenteControle)
+
+
+
 
 if __name__ == "__main__":
-    HS = 0
 
-    InsertionEvenement((HS,DebutSimulation))
-    while len(echeancier) > 0 :
-        (date, evenement) = echeancier.pop(0)
-        MajAires(HS,date)
-        HS = date
-        evenement()
-    tmax = Get_Max_Time()
-    print(f"les temps d'attentes maximums sont respectivement pour les files de contrôle et de réparation : {tmax.values()}")
+    nbSimu = 1000
+
+    for i in range(nbSimu):
+        HS = 0
+        nbBus = 0
+        nbBusRep = 0
+        aireQc = 0
+        aireQr = 0
+        echeancier = []
+        aireBr = 0
+        fileQc = 0
+        fileQr = 0
+        echeancierDepartFileR = []
+        echeancierArriveeFileR = []
+        echeancierDepartFileC = []
+        echeancierArriveeFileC = []
+        ControleDispo = 0
+        ReparationDispo = 0
+        tempsAttMoyCon = 0
+        tempsAttMoyRep = 0
+        tauxUtilRep = 0
+        tailleMoyenneFileC = 0
+        tailleMoyenneFileR = 0
+        blocageReparation = 0
+        aireQrBlocage = 0
+        blocageControle = 0
+        aireQcBlocage = 0
+        nbBusControle = 0
+        tempsAttenteControle = []
+
+        InsertionEvenement((HS, DebutSimulation))
+        while len(echeancier) > 0:
+            (date, evenement) = echeancier.pop(0)
+            MajAires(HS, date)
+            HS = date
+            evenement()
+        tmax = Get_Max_Time()
+        print(f"les temps d'attentes maximums sont respectivement pour les files de contrôle et de réparation : {tmax.values()}")
+
+    csvFile = open("question6.csv", "w")
+    writer = csv.writer(csvFile)
+    writer.writerows(tempsAttenteControleGlobal)
+    csvFile.close()
